@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -12,6 +14,10 @@ type processorResp struct {
 	Anomalies string `json:"anomaliesDetected"`
 }
 
+type processorReq struct {
+	Metrics []byte `json:"metrics"`
+}
+
 func main() {
 	r := gin.Default()
 	r.GET("/start", DetectAnomalies)
@@ -21,8 +27,13 @@ func main() {
 func DetectAnomalies(c *gin.Context) {
 	// call metrics processing service
 	// return whether anomaly was detected
+	data := make([]byte, 5*1024*1024)
+	rand.Read(data)
+	//r := &processorReq{
+	//	Metrics: data,
+	//}
 	client := &http.Client{}
-	req, err := http.NewRequest("GET", "http://metrics-processing:8000/detectAnomalies", nil)
+	req, err := http.NewRequest("POST", "http://metrics-processing:8000/detectAnomalies", bytes.NewBuffer(data))
 	if err != nil {
 		panic(err)
 	}
