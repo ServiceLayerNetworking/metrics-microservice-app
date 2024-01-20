@@ -18,6 +18,8 @@ type processorReq struct {
 	Metrics []byte `json:"metrics"`
 }
 
+var propogate = []string{"x-request-id", "x-b3-traceid", "x-b3-spanid", "x-b3-parentspanid", "x-b3-sampled", "x-b3-flags", "x-ot-span-context"}
+
 func main() {
 	r := gin.Default()
 	r.GET("/start", DetectAnomalies)
@@ -36,6 +38,12 @@ func DetectAnomalies(c *gin.Context) {
 	req, err := http.NewRequest("POST", "http://metrics-processing:8000/detectAnomalies", bytes.NewBuffer(data))
 	if err != nil {
 		panic(err)
+	}
+	// propogate tracing headers
+	for _, v := range propogate {
+		if val, ok := c.Request.Header[v]; ok {
+			req.Header[v] = val
+		}
 	}
 	resp, err := client.Do(req)
 	if err != nil {
