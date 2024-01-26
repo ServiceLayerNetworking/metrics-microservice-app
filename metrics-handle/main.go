@@ -5,9 +5,10 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 type processorResp struct {
@@ -18,7 +19,7 @@ type processorReq struct {
 	Metrics []byte `json:"metrics"`
 }
 
-var propogate = []string{"x-request-id", "x-b3-traceid", "x-b3-spanid", "x-b3-parentspanid", "x-b3-sampled", "x-b3-flags", "x-ot-span-context"}
+var propogate = []string{"X-Request-Id", "X-B3-Traceid", "X-B3-Spanid", "X-B3-ParentSpanid", "X-B3-Sampled"}
 
 func main() {
 	r := gin.Default()
@@ -40,8 +41,12 @@ func DetectAnomalies(c *gin.Context) {
 		panic(err)
 	}
 	// propogate tracing headers
+
 	for _, v := range propogate {
 		if val, ok := c.Request.Header[v]; ok {
+			if v == "X-B3-Traceid" {
+				fmt.Printf("traceid: %v\n", val)
+			}
 			req.Header[v] = val
 		}
 	}
@@ -51,13 +56,17 @@ func DetectAnomalies(c *gin.Context) {
 	}
 	defer resp.Body.Close()
 	// save body to string
+	var r *processorResp
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		panic(err)
-	}
-	r := &processorResp{}
-	if err = json.Unmarshal(body, r); err != nil {
-		panic(err)
+		r = &processorResp{
+			Anomalies: "false",
+		}
+	} else {
+		r = &processorResp{}
+		if err = json.Unmarshal(body, r); err != nil {
+			panic(err)
+		}
 	}
 	fmt.Printf("detected: %v\n", r.Anomalies)
 	c.JSON(200, gin.H{
